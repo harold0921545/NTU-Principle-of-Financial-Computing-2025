@@ -1,6 +1,6 @@
 import sys
 import math
-
+from scipy.optimize import newton
 
 if __name__ == '__main__':
     # note
@@ -27,25 +27,31 @@ if __name__ == '__main__':
     C, n, m, r1, r2 = map(float, sys.argv[1:])
     n, m =  int(n), int(m)
     
-    V1 = 0
-    while True:
-        V1 += 1
-        V2 = C + V1
-        
-        loan_regular_payment = V1 * (r1 / m) / (1 - (1 + r1 / m) ** (-n * m))
-        bond_interest = V2 * (r2 / m)
-
-        if loan_regular_payment > bond_interest:
-            break
-    V1 -= 1
+    # find the maximum loan amount
+    l, r = 0, 10 ** 10
+    while l < r:
+        mid = (l + r) // 2
+        loan_regular_payment = mid * (r1 / m) / (1 - (1 + r1 / m) ** (-n * m))
+        bond_interest = (C + mid) * (r2 / m)
+        if loan_regular_payment <= bond_interest:
+            l = mid + 1
+        else:
+            r = mid
+    V1 = l - 1
     V2 = C + V1
+
     loan_regular_payment = V1 * (r1 / m) / (1 - (1 + r1 / m) ** (-n * m))
     bond_interest = V2 * (r2 / m)
-    
     loan_total_interest = loan_regular_payment * n * m - V1
 
-    cash_flow = [-V2] + [bond_interest - loan_regular_payment] * (n * m - 1) + [bond_interest - loan_regular_payment + V2]
-    print(cash_flow)
-    
+    cash_flow = [-C] + [bond_interest - loan_regular_payment] * (n * m - 1) + [bond_interest - loan_regular_payment + V2]
+
+    def npv(r):
+        return sum([cf / (1 + r) ** i for i, cf in enumerate(cash_flow)])
+
+    try:
+        irr = newton(npv, 0.01)
+    except:
+        irr = float('nan')
 
     print(f"{V1}, {loan_total_interest:.6f}, {bond_interest * n * m:.6f}, {irr * m:.6f}")
